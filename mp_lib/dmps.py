@@ -29,12 +29,12 @@ class DMP:
         self.dmp_start_pos = np.zeros((1, num_dof))
         self.dmp_start_vel = np.zeros((1, num_dof))
 
-        self.dmp_goal_pos = np.zeros((1, num_dof))
+        self._dmp_goal_pos = np.zeros((1, num_dof))
         self.dmp_goal_vel = np.zeros((1, num_dof))
 
         self.dmp_amplitude_modifier = np.ones((1, num_dof))
 
-        self.dmp_weights = np.zeros((basis_generator.num_basis, num_dof))  # initial dmp weights
+        self._dmp_weights = np.zeros((basis_generator.num_basis, num_dof))  # initial dmp weights
 
         # TODO: should these be input arguments, or set externally in application?
         self.use_tau = True
@@ -42,6 +42,21 @@ class DMP:
         self.use_dmp_start_vel = False
         self.use_dmp_goal_vel = False
         self.use_dmp_amplitude_modifier = False
+
+    @property
+    def dmp_weights(self):
+        return self._dmp_weights
+
+    @property
+    def dmp_goal_pos(self):
+        return self._dmp_goal_pos
+
+    def set_weights(self, w, goal=None):
+        assert w.shape == self._dmp_weights.shape
+        self._dmp_weights = w
+        if goal is not None:
+            assert goal.shape == self._dmp_goal_pos[0].shape
+            self._dmp_goal_pos[0] = goal
 
     def reference_trajectory(self, time):
 
@@ -86,7 +101,7 @@ class DMP:
         else:
             self.dmp_start_vel = np.zeros((1, self.num_dimensions))
 
-        self.dmp_goal_pos = reference_pos[-1:, :]
+        self._dmp_goal_pos = reference_pos[-1:, :]
         if self.use_dmp_goal_vel:
             self.dmp_goal_vel = reference_vel[0:1, :]
         else:
@@ -108,4 +123,4 @@ class DMP:
 
         weight_matrix = np.linalg.solve(basis.T @ basis + np.eye(basis.shape[1]) * self.il_regularization,
                                         basis.T @ forcing_function)
-        self.dmp_weights = weight_matrix
+        self._dmp_weights = weight_matrix
