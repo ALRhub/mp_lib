@@ -1,4 +1,4 @@
-from mp_lib.mp_lib.det_promp import DeterministicProMP
+from mp_lib.det_promp import DeterministicProMP
 import time
 import numpy as np
 import matplotlib.pyplot as plt

@@ -1,5 +1,5 @@
-import mp_lib.mp_lib.phase as mpl_phase
-import mp_lib.mp_lib.basis as mpl_basis
+import mp_lib.phase as mpl_phase
+import mp_lib.basis as mpl_basis
 import numpy as np
 
 # TODO: phase instead of time

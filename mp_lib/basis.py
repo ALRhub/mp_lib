@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
-import mp_lib.mp_lib.phase as mpl_phase
+import mp_lib.phase as mpl_phase
 
 
 class BasisGenerator(ABC):
