@@ -31,7 +31,7 @@ class BasisGenerator(ABC):
 class DMPBasisGenerator(BasisGenerator):
 
     def __init__(self, phase_generator, num_basis=10,
-                 duration: int = 1, basis_bandwidth_factor: int = 3):
+                 duration: float = 1, basis_bandwidth_factor: int = 3):
         BasisGenerator.__init__(self, phase_generator, num_basis)
 
         self.basis_bandwidth_factor = basis_bandwidth_factor
@@ -50,14 +50,15 @@ class DMPBasisGenerator(BasisGenerator):
         diff_sqr = (phase[:, None] - self.centers[None, :]) ** 2 * self.bandwidth[None, :]
         basis = np.exp(- diff_sqr / 2)
 
-        # sum_b = np.sum(basis, axis=1)
-        # basis = basis * phase[:, None] / sum_b[:, None]
+        sum_b = np.sum(basis, axis=1)
+        # basis = basis / sum_b[:, None]
+        basis = basis * phase[:, None] / sum_b[:, None]
         #
         # basis = basis / np.sum(basis, axis=0)
         # TODO: should basis sum to one?
-        basis = basis * phase[:, None]
-        sum_b = np.sum(basis, axis=1)
-        basis = basis / sum_b[:, None]
+        # basis = basis * phase[:, None]
+        # sum_b = np.sum(basis, axis=1)
+        # basis = basis / sum_b[:, None]
 
         return basis
 

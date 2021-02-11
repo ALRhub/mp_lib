@@ -13,6 +13,7 @@ class DeterministicProMP:
             self.widths = np.ones(n_basis) * width
         self.scale = None
         self.weights = None
+        # TODO: add scaling of basis functions to return to start position
 
     def _exponential_kernel(self, z):
         z_ext = z[:, None]
