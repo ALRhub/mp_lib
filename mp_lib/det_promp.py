@@ -4,16 +4,19 @@ import matplotlib.pyplot as plt
 
 class DeterministicProMP:
 
-    def __init__(self, n_basis, width=None, off=0.2):
+    def __init__(self, n_basis, n_dof, width=None, off=0.2, zero_centered=False):
         self.n_basis = n_basis
-        self.centers = np.linspace(-off, 1. + off, n_basis)
+        self.n_dof = n_dof
+        if zero_centered:
+            self.n_basis += 4
+        self.centers = np.linspace(-off, 1. + off, self.n_basis)
         if width is None:
-            self.widths = np.ones(n_basis) * ((1. + off) / (2. * n_basis))
+            self.widths = np.ones(self.n_basis) * ((1. + off) / (2. * self.n_basis))
         else:
-            self.widths = np.ones(n_basis) * width
+            self.widths = np.ones(self.n_basis) * width
         self.scale = None
         self.weights = None
-        # TODO: add scaling of basis functions to return to start position
+        self.zero_centered = zero_centered
 
     def _exponential_kernel(self, z):
         z_ext = z[:, None]
@@ -49,6 +52,8 @@ class DeterministicProMP:
 
     def set_weights(self, scale, weights):
         self.scale = scale
+        if self.zero_centered:
+            weights = np.concatenate((np.zeros((2, self.n_dof)), weights, np.zeros((2, self.n_dof))), axis=0)
         self.weights = weights
 
     def visualize(self, frequency, scale=1):

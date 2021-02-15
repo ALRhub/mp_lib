@@ -4,20 +4,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-num_basis = 8
+num_basis = 9
 num_dof = 3
 
 # phaseGenerator = PhaseGenerator(dataManager)
 # phase_generator = ExpDecayPhaseGenerator()
 # basis_generator = DMPBasisGenerator(phase_generator, num_basis=num_basis)
-trajectory_generator = DeterministicProMP(num_basis, width=0.0035, off=0.01)
+trajectory_generator = DeterministicProMP(num_basis, n_dof=num_dof, width=0.0035, off=0.01)
 
 # numSamples = 50  # number of trajectories
 
 # trajectory_generator.dmp_goal_pos = np.random.normal(loc=0.0, scale=1.0, size=(1, num_dof))
 # trajectory_generator.dmp_weights = np.random.normal(0.0, 10.0, (num_basis, num_dof))
 
-trajectory_generator.set_weights(3.5, np.random.normal(0.0, 10.0, (num_basis, num_dof)))
+n_steps = 5
+weights = np.random.normal(size=(n_steps, num_dof))
+weights = np.concatenate((np.zeros((2, num_dof)), weights, np.zeros((2, num_dof))), axis=0)
+
+trajectory_generator.set_weights(3.5, weights)
 
 trajectory_generator.visualize(500)
 
