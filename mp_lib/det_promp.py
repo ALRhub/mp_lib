@@ -7,19 +7,24 @@ class DeterministicProMP:
     def __init__(self, n_basis, n_dof, width=None, off=0.2, zero_start=False, zero_goal=False):
         self.n_basis = n_basis
         self.n_dof = n_dof
+        self._weights = np.zeros(shape=(self.n_basis, self.n_dof))
+        add_basis = 0
         if zero_start:
-            self.n_basis += 2
+            add_basis += 2
         if zero_goal:
-            self.n_basis += 2
-        self.centers = np.linspace(-off, 1. + off, self.n_basis)
+            add_basis += 2
+        self.centers = np.linspace(-off, 1. + off, self.n_basis + add_basis)
         if width is None:
-            self.widths = np.ones(self.n_basis) * ((1. + off) / (2. * self.n_basis))
+            self.widths = np.ones(self.n_basis + add_basis) * ((1. + off) / (2. * (self.n_basis + add_basis)))
         else:
-            self.widths = np.ones(self.n_basis) * width
+            self.widths = np.ones(self.n_basis + add_basis) * width
         self.scale = None
-        self.weights = None
         self.zero_start = zero_start
         self.zero_goal = zero_goal
+
+    @property
+    def weights(self):
+        return self._weights
 
     def _exponential_kernel(self, z):
         z_ext = z[:, None]
@@ -36,10 +41,11 @@ class DeterministicProMP:
                ((w_der2 * sum_w - sum_w_der2 * w) * sum_w - 2 * sum_w_der * tmp) / np.power(sum_w, 3)
 
     def learn(self, t, pos, lmbd=1e-6):
-        self.scale = np.max(t)
+        scale = np.max(t)
         # We normalize the timesteps to be in the interval [0, 1]
-        phi = self._exponential_kernel(t / self.scale)[0]
-        self.weights = np.linalg.solve(np.dot(phi.T, phi) + lmbd * np.eye(phi.shape[1]), np.dot(phi.T, pos))
+        phi = self._exponential_kernel(t / scale)[0]
+        weights = np.linalg.solve(np.dot(phi.T, phi) + lmbd * np.eye(phi.shape[1]), np.dot(phi.T, pos))
+        self.set_weights(scale, weights)
 
     def compute_trajectory(self, frequency, scale=1):
         corrected_scale = self.scale / scale
@@ -50,8 +56,8 @@ class DeterministicProMP:
                np.dot(vel_features, self.weights) / corrected_scale, \
                np.dot(acc_features, self.weights) / np.square(corrected_scale)
 
-    def get_weights(self):
-        return np.copy(self.weights)
+    # def get_weights(self):
+    #     return np.copy(self.weights)
 
     def set_weights(self, scale, weights):
         self.scale = scale
@@ -59,7 +65,7 @@ class DeterministicProMP:
             weights = np.concatenate((np.zeros((2, self.n_dof)), weights), axis=0)
         if self.zero_goal:
             weights = np.concatenate((weights, np.zeros((2, self.n_dof))), axis=0)
-        self.weights = weights
+        self._weights = weights
 
     def visualize(self, frequency, scale=1):
         corrected_scale = self.scale / scale

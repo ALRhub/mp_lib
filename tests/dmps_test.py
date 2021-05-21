@@ -15,7 +15,7 @@ num_time_steps = int(duration/dt)
 # phaseGenerator = PhaseGenerator(dataManager)
 phase_generator = ExpDecayPhaseGenerator(duration=duration, alpha_phase=3)
 basis_generator = DMPBasisGenerator(phase_generator, num_basis=num_basis, duration=duration)
-trajectory_generator = DMP(basis_generator, phase_generator, num_dof=num_dof, num_time_steps=num_time_steps, dt=dt)
+trajectory_generator = DMP(basis_generator, phase_generator, num_dof=num_dof, duration=duration, dt=dt)
 
 # numSamples = 50  # number of trajectories
 

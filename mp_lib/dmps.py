@@ -11,14 +11,15 @@ class DMP:
                  basis_generator: mpl_basis.BasisGenerator,
                  phase_generator: mpl_phase.PhaseGenerator,
                  num_dof: int,
-                 num_time_steps: int = 100,
+                 duration: float = 1.,
                  dt: float = 0.01):
         self.basis_generator = basis_generator
         self.phase_generator = phase_generator
         self.num_dimensions = num_dof
 
-        self.num_time_steps = num_time_steps
+        self.num_time_steps = int(duration / dt)
         self.dt = dt
+        self.duration = duration
 
         self.tau = 1.0 / (self.dt * self.num_time_steps)
 
@@ -44,7 +45,7 @@ class DMP:
         self.use_dmp_amplitude_modifier = False
 
     @property
-    def dmp_weights(self):
+    def weights(self):
         return self._dmp_weights
 
     @property
@@ -68,7 +69,7 @@ class DMP:
         reference_pos[0, :] = self.dmp_start_pos
         reference_vel[0, :] = self.dmp_start_vel
 
-        forcing_function = basis @ self.dmp_weights
+        forcing_function = basis @ self.weights
 
         for i in range(self.num_time_steps - 1):
             goal_vel = self.dmp_goal_vel * self.tau / (self.dt * self.num_time_steps)
