@@ -15,7 +15,7 @@ class DMP:
                  dt: float = 0.01):
         self.basis_generator = basis_generator
         self.phase_generator = phase_generator
-        self.num_dimensions = num_dof
+        self.n_dof = num_dof
 
         self.num_time_steps = int(duration / dt)
         self.dt = dt
@@ -63,8 +63,8 @@ class DMP:
 
         basis = self.basis_generator.basis(time)
 
-        reference_pos = np.zeros((self.num_time_steps, self.num_dimensions))
-        reference_vel = np.zeros((self.num_time_steps, self.num_dimensions))
+        reference_pos = np.zeros((self.num_time_steps, self.n_dof))
+        reference_vel = np.zeros((self.num_time_steps, self.n_dof))
 
         reference_pos[0, :] = self.dmp_start_pos
         reference_vel[0, :] = self.dmp_start_vel
@@ -100,19 +100,19 @@ class DMP:
         if self.use_dmp_start_vel:
             self.dmp_start_vel = reference_vel[0, :]
         else:
-            self.dmp_start_vel = np.zeros((1, self.num_dimensions))
+            self.dmp_start_vel = np.zeros((1, self.n_dof))
 
         self._dmp_goal_pos = reference_pos[-1:, :]
         if self.use_dmp_goal_vel:
             self.dmp_goal_vel = reference_vel[0:1, :]
         else:
-            self.dmp_goal_vel = np.zeros((1, self.num_dimensions))
+            self.dmp_goal_vel = np.zeros((1, self.n_dof))
 
         if self.use_dmp_amplitude_modifier:
             self.dmp_amplitude_modifier = np.max(reference_pos, axis=0) - np.min(reference_pos, axis=0)
             self.dmp_amplitude_modifier[self.dmp_amplitude_modifier < 0.01] = 1
         else:
-            self.dmp_amplitude_modifier = np.ones((1, self.num_dimensions))
+            self.dmp_amplitude_modifier = np.ones((1, self.n_dof))
 
         # FIXME: make nicer and check for dimensionalities
         moving_goal = self.dmp_goal_pos - self.tau / (self.num_time_steps * self.dt) \
