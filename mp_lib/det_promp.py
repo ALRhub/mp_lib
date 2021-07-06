@@ -4,15 +4,16 @@ import matplotlib.pyplot as plt
 
 class DeterministicProMP:
 
-    def __init__(self, n_basis, n_dof, width=None, off=0.2, zero_start=False, zero_goal=False):
+    def __init__(self, n_basis, n_dof, width=None, off=0.2, zero_start=False, zero_goal=False, n_zero_bases=2):
         self.n_basis = n_basis
         self.n_dof = n_dof
         self._weights = np.zeros(shape=(self.n_basis, self.n_dof))
+        self.n_zero_bases = n_zero_bases
         add_basis = 0
         if zero_start:
-            add_basis += 2
+            add_basis += n_zero_bases
         if zero_goal:
-            add_basis += 2
+            add_basis += n_zero_bases
         self.centers = np.linspace(-off, 1. + off, self.n_basis + add_basis)
         if width is None:
             self.widths = np.ones(self.n_basis + add_basis) * ((1. + off) / (2. * (self.n_basis + add_basis)))
@@ -62,9 +63,9 @@ class DeterministicProMP:
     def set_weights(self, scale, weights):
         self.scale = scale
         if self.zero_start:
-            weights = np.concatenate((np.zeros((2, self.n_dof)), weights), axis=0)
+            weights = np.concatenate((np.zeros((self.n_zero_bases, self.n_dof)), weights), axis=0)
         if self.zero_goal:
-            weights = np.concatenate((weights, np.zeros((2, self.n_dof))), axis=0)
+            weights = np.concatenate((weights, np.zeros((self.n_zero_bases, self.n_dof))), axis=0)
         self._weights = weights
 
     def visualize(self, frequency, scale=1):
