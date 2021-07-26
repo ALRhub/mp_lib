@@ -45,6 +45,10 @@ class DMP:
         self.use_dmp_amplitude_modifier = False
 
     @property
+    def n_basis(self):
+        return self.basis_generator.num_basis
+
+    @property
     def weights(self):
         return self._dmp_weights
 
