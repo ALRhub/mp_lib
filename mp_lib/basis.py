@@ -91,14 +91,16 @@ class NormalizedRBFBasisGenerator(BasisGenerator):
 
         phase = self.phase_generator.phase(time)
 
-        diff_sqr = np.array([((x - self.centers) ** 2) * self.bandwidth for x in phase])
-        diff_sqr2 = (phase[:, None] - self.centers[None, :]) ** 2 * self.bandwidth[None, :]
+        # diff_sqr = np.array([((x - self.centers) ** 2) * self.bandwidth for x in phase])
+        diff_sqr = (phase[:, None] - self.centers[None, :]) ** 2 * self.bandwidth[None, :]
         basis = np.exp(- diff_sqr / 2)
 
         sum_b = np.sum(basis, axis=1)
         # FIXME: should basis be multiplied with phase here as well?
-        basis = [column / sum_b for column in basis.transpose()]
-        return np.array(basis).transpose()
+        # basis = [column / sum_b for column in basis.transpose()]
+        basis = basis / sum_b[:, None]
+        return basis
+        # return np.array(basis).transpose()
 
 
 # TODO: some things still missing

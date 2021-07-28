@@ -14,7 +14,7 @@ class DeterministicProMP:
             add_basis += n_zero_bases
         if zero_goal:
             add_basis += n_zero_bases
-        self.centers = np.linspace(-off, 1. + off, self.n_basis + add_basis)
+        self.centers = np.linspace(off, 1. + off, self.n_basis + add_basis)
         if width is None:
             self.widths = np.ones(self.n_basis + add_basis) * ((1. + off) / (2. * (self.n_basis + add_basis)))
         else:

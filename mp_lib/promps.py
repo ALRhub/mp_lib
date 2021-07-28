@@ -64,6 +64,13 @@ class ProMP:
 
         return trajectory_mean, std_trajectory
 
+    def get_mean_trajectory_full(self, time):
+        basis_multi_dof = self.basis.basis_multi_dof(time=time, num_dof=self.num_dof)
+
+        mean_flat = basis_multi_dof.dot(self.mu.transpose())
+
+        return mean_flat
+
     def get_mean_and_covariance_trajectory_full(self, time):
         basis_multi_dof = self.basis.basis_multi_dof(time=time, num_dof=self.num_dof)
 
