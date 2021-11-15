@@ -4,15 +4,36 @@ import mp_lib.phase as mpl_phase
 import mp_lib.basis as mpl_basis
 import mp_lib.promps as mpl_promps
 
-phase_generator = mpl_phase.LinearPhaseGenerator()
+
+n_basis = 7
+n_dof = 3
+duration = 2
+dt = 0.02
+num_time_steps = int(duration/dt)
+
+phase_generator = mpl_phase.LinearPhaseGenerator(duration=duration)
 basis_generator = mpl_basis.NormalizedRBFBasisGenerator(phase_generator,
-                                                        num_basis=5,
-                                                        duration=1,
-                                                        basis_bandwidth_factor=3,
-                                                        num_basis_outside=1)
-time = np.linspace(0, 1, 100)
-n_dof = 7
-promp = mpl_promps.ProMP(basis_generator, phase_generator, n_dof)   # 3 argument = nDOF
+                                                        zero_start=True,
+                                                        zero_goal=False,
+                                                        num_basis=n_basis,
+                                                        duration=duration)
+time = np.linspace(0, duration, num_time_steps)
+
+promp = mpl_promps.ProMP(num_dof=n_dof, num_basis=n_basis, duration=duration, dt=dt,
+                         basis_generator=basis_generator, phase_generator=phase_generator)   # 3 argument = nDOF
+
+# weights = np.random.normal(0.0, 100.0, (n_basis * n_dof, 1))
+weights = np.arange(n_basis * n_dof)
+promp.set_mean(weights)
+promp.set_weights(weights)
+# mean_tajectory = promp.get_mean_trajectory_full(time)
+
+des_pos, des_vel = promp.reference_trajectory(time)
+
+plt.figure()
+plt.plot(time, des_pos)
+plt.plot(time, des_vel)
+
 trajectories = promp.get_trajectory_samples(time, n_samples=4)   # 2nd argument is numSamples/Demonstrations/trajectories
 mean_traj, cov_traj = promp.get_mean_and_covariance_trajectory(time)
 plotDof = 2
