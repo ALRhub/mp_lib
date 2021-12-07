@@ -51,6 +51,10 @@ class DMP(BaseMP):
         self.use_dmp_amplitude_modifier = False
 
     @property
+    def n_basis(self):
+        return self.basis_generator.num_basis
+
+    @property
     def dmp_goal_pos(self):
         return self._dmp_goal_pos
 
@@ -77,91 +81,6 @@ class DMP(BaseMP):
 
         basis_multi_dof = self.basis_generator.basis_multi_dof(time, self.n_dof)
         forcing_function = np.reshape(basis_multi_dof @ self.weights, (self.num_time_steps, self.n_dof), order='F')
-
-        for i in range(self.num_time_steps - 1):
-            goal_vel = self.dmp_goal_vel * self.tau / (self.dt * self.num_time_steps)
-            moving_goal = self.dmp_goal_pos - goal_vel * self.dt * (self.num_time_steps - i)
-
-            acc = self.dmp_alpha_x * (self.dmp_beta_x * (moving_goal - reference_pos[i, :]) * self.tau ** 2
-                                      + (goal_vel - reference_vel[i, :]) * self.tau) \
-                  + self.dmp_amplitude_modifier * forcing_function[i, :] * self.tau ** 2
-
-            reference_vel[i + 1, :] = reference_vel[i, :] + self.dt * acc
-
-            reference_pos[i + 1, :] = reference_pos[i, :] + self.dt * reference_vel[i + 1, :]
-
-        return reference_pos, reference_vel
-
-
-class DMP_Old:
-
-    def __init__(self,
-                 basis_generator: mpl_basis.BasisGenerator,
-                 phase_generator: mpl_phase.PhaseGenerator,
-                 num_dof: int,
-                 duration: float = 1.,
-                 dt: float = 0.01):
-        self.basis_generator = basis_generator
-        self.phase_generator = phase_generator
-        self.n_dof = num_dof
-
-        self.num_time_steps = int(duration / dt)
-        self.dt = dt
-        self.duration = duration
-
-        self.tau = 1.0 / (self.dt * self.num_time_steps)
-
-        self.dmp_alpha_x = 25
-        self.dmp_beta_x = 25 / 4
-        self.il_regularization = 10 ** -12
-
-        self.dmp_start_pos = np.zeros((1, num_dof))
-        self.dmp_start_vel = np.zeros((1, num_dof))
-
-        self._dmp_goal_pos = np.zeros((1, num_dof))
-        self.dmp_goal_vel = np.zeros((1, num_dof))
-
-        self.dmp_amplitude_modifier = np.ones((1, num_dof))
-
-        self._dmp_weights = np.zeros((basis_generator.num_basis, num_dof))  # initial dmp weights
-
-        # TODO: should these be input arguments, or set externally in application?
-        self.use_tau = True
-        self.use_dmp_goal_pos = True
-        self.use_dmp_start_vel = False
-        self.use_dmp_goal_vel = False
-        self.use_dmp_amplitude_modifier = False
-
-    @property
-    def n_basis(self):
-        return self.basis_generator.num_basis
-
-    @property
-    def weights(self):
-        return self._dmp_weights
-
-    @property
-    def dmp_goal_pos(self):
-        return self._dmp_goal_pos
-
-    def set_weights(self, w, goal=None):
-        assert w.shape == self._dmp_weights.shape
-        self._dmp_weights = w
-        if goal is not None:
-            assert goal.shape == self._dmp_goal_pos[0].shape
-            self._dmp_goal_pos[0] = goal
-
-    def reference_trajectory(self, time):
-
-        basis = self.basis_generator.basis(time)
-
-        reference_pos = np.zeros((self.num_time_steps, self.n_dof))
-        reference_vel = np.zeros((self.num_time_steps, self.n_dof))
-
-        reference_pos[0, :] = self.dmp_start_pos
-        reference_vel[0, :] = self.dmp_start_vel
-
-        forcing_function = basis @ self.weights
 
         for i in range(self.num_time_steps - 1):
             goal_vel = self.dmp_goal_vel * self.tau / (self.dt * self.num_time_steps)
