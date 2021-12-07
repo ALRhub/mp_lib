@@ -1,41 +1,47 @@
 import mp_lib.phase as mpl_phase
 import mp_lib.basis as mpl_basis
+from mp_lib.mp_base import BaseMP
 import numpy as np
 
-# TODO: phase instead of time
 
-
-class DMP:
-
+class DMP(BaseMP):
     def __init__(self,
-                 basis_generator: mpl_basis.BasisGenerator,
-                 phase_generator: mpl_phase.PhaseGenerator,
                  num_dof: int,
-                 duration: float = 1.,
-                 dt: float = 0.01):
-        self.basis_generator = basis_generator
-        self.phase_generator = phase_generator
-        self.n_dof = num_dof
+                 num_basis: int,
+                 duration: float,
+                 dt: float,
+                 basis_generator: mpl_basis.BasisGenerator = None,
+                 phase_generator: mpl_phase.PhaseGenerator = None,
+                 ):
 
-        self.num_time_steps = int(duration / dt)
-        self.dt = dt
-        self.duration = duration
+        if phase_generator is None:
+            phase_generator = mpl_phase.ExpDecayPhaseGenerator(duration=duration, alpha_phase=4)
 
-        self.tau = 1.0 / (self.dt * self.num_time_steps)
+        if basis_generator is None:
+            basis_generator = mpl_basis.DMPBasisGenerator(phase_generator=phase_generator,
+                                                          num_basis=num_basis,
+                                                          duration=duration)
+
+        assert basis_generator.num_basis == num_basis
+
+        super().__init__(phase_generator=phase_generator, basis_generator=basis_generator,
+                         num_dof=num_dof, duration=duration, dt=dt)
+
+        self.tau = 1.0 / duration
 
         self.dmp_alpha_x = 25
         self.dmp_beta_x = 25 / 4
         self.il_regularization = 10 ** -12
 
-        self.dmp_start_pos = np.zeros((1, num_dof))
-        self.dmp_start_vel = np.zeros((1, num_dof))
+        self.dmp_start_pos = np.zeros(num_dof)
+        self.dmp_start_vel = np.zeros(num_dof)
 
-        self._dmp_goal_pos = np.zeros((1, num_dof))
-        self.dmp_goal_vel = np.zeros((1, num_dof))
+        self._dmp_goal_pos = np.zeros(num_dof)
+        self.dmp_goal_vel = np.zeros(num_dof)
 
-        self.dmp_amplitude_modifier = np.ones((1, num_dof))
+        self.dmp_amplitude_modifier = np.ones(num_dof)
 
-        self._dmp_weights = np.zeros((basis_generator.num_basis, num_dof))  # initial dmp weights
+        self._dmp_weights = np.zeros(shape=(num_basis * num_dof, 1))  # initial dmp weights
 
         # TODO: should these be input arguments, or set externally in application?
         self.use_tau = True
@@ -49,23 +55,23 @@ class DMP:
         return self.basis_generator.num_basis
 
     @property
-    def weights(self):
-        return self._dmp_weights
-
-    @property
     def dmp_goal_pos(self):
         return self._dmp_goal_pos
 
+    @property
+    def weights(self):
+        return self._dmp_weights
+
     def set_weights(self, w, goal=None):
+        if len(w.shape) < 2:
+            w = np.reshape(w, (-1, 1))
         assert w.shape == self._dmp_weights.shape
         self._dmp_weights = w
         if goal is not None:
-            assert goal.shape == self._dmp_goal_pos[0].shape
-            self._dmp_goal_pos[0] = goal
+            assert goal.shape == self._dmp_goal_pos.shape
+            self._dmp_goal_pos = goal
 
     def reference_trajectory(self, time):
-
-        basis = self.basis_generator.basis(time)
 
         reference_pos = np.zeros((self.num_time_steps, self.n_dof))
         reference_vel = np.zeros((self.num_time_steps, self.n_dof))
@@ -73,7 +79,8 @@ class DMP:
         reference_pos[0, :] = self.dmp_start_pos
         reference_vel[0, :] = self.dmp_start_vel
 
-        forcing_function = basis @ self.weights
+        basis_multi_dof = self.basis_generator.basis_multi_dof(time, self.n_dof)
+        forcing_function = np.reshape(basis_multi_dof @ self.weights, (self.num_time_steps, self.n_dof), order='F')
 
         for i in range(self.num_time_steps - 1):
             goal_vel = self.dmp_goal_vel * self.tau / (self.dt * self.num_time_steps)

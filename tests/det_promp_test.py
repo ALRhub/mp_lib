@@ -4,13 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-num_basis = 9
-num_dof = 3
+n_basis = 5
+n_dof = 3
+duration = 2
+dt = 0.02
+num_time_steps = int(duration/dt)
 
 # phaseGenerator = PhaseGenerator(dataManager)
 # phase_generator = ExpDecayPhaseGenerator()
 # basis_generator = DMPBasisGenerator(phase_generator, num_basis=num_basis)
-trajectory_generator = DeterministicProMP(num_basis, n_dof=num_dof, width=0.0035, off=0.01)
+trajectory_generator = DeterministicProMP(n_basis, n_dof=n_dof, width=0.0035, off=0.01,
+                                          zero_start=True, zero_goal=True)
 
 # numSamples = 50  # number of trajectories
 
@@ -18,17 +22,19 @@ trajectory_generator = DeterministicProMP(num_basis, n_dof=num_dof, width=0.0035
 # trajectory_generator.dmp_weights = np.random.normal(0.0, 10.0, (num_basis, num_dof))
 
 n_steps = 5
-weights = np.random.normal(size=(n_steps, num_dof))
-weights = np.concatenate((np.zeros((2, num_dof)), weights, np.zeros((2, num_dof))), axis=0)
+# weights = np.random.normal(size=(n_steps, num_dof))
+# weights = np.concatenate((np.zeros((2, num_dof)), weights, np.zeros((2, num_dof))), axis=0)
 
-trajectory_generator.set_weights(3.5, weights)
+weights = np.arange(n_basis * n_dof).reshape((n_dof, n_basis)).T
+
+trajectory_generator.set_weights(duration, weights)
 
 trajectory_generator.visualize(500)
 
 start = time.process_time()
 
-t = np.linspace(0, 1, 1750)
-something1, ref_pos, ref_vel, something2 = trajectory_generator.compute_trajectory(500, 1)
+t = np.linspace(0, 1, num_time_steps)
+something1, ref_pos, ref_vel, something2 = trajectory_generator.compute_trajectory(int(1/dt), 1)
 
 plt.figure()
 plt.plot(t, ref_pos)

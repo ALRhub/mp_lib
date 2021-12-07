@@ -17,14 +17,14 @@ class PhaseGenerator(ABC):
 
 class LinearPhaseGenerator(PhaseGenerator):
 
-    def __init__(self, phase_velocity=1.0):
+    def __init__(self, duration=1.0):
 
         PhaseGenerator.__init__(self)
-        self.phase_velocity = phase_velocity
+        self.duration = duration
 
     def phase(self, time):
 
-        phase = np.array(time) * self.phase_velocity
+        phase = np.array(time) / self.duration
 
         return phase
 
