@@ -68,6 +68,7 @@ class NormalizedRBFBasisGenerator(BasisGenerator):
         self.basis_bandwidth_factor = basis_bandwidth_factor
         self.n_basis_outside = num_basis_outside
         self.n_zero_basis = n_zero_basis
+        self.off_set = off_set
 
         n_add_basis = 0
         if zero_start:
@@ -97,6 +98,9 @@ class NormalizedRBFBasisGenerator(BasisGenerator):
         self.zero_start = zero_start
         self.zero_goal = zero_goal
 
+        # self.cached_duration = None
+        # self.cached_features = None
+
     def basis(self, time):
 
         if isinstance(time, (float, int)):
@@ -113,6 +117,8 @@ class NormalizedRBFBasisGenerator(BasisGenerator):
         # return np.array(basis).transpose()
 
     def basis_and_der(self, time):
+        # if self.cached_duration == time[-1]:
+        #     return self.cached_features
         phase = self.phase_generator.phase(time)
 
         diffs = phase[:, None] - self.centers[None, :]

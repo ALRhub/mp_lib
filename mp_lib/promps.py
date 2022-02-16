@@ -3,8 +3,7 @@ import mp_lib.phase as mpl_phase
 import mp_lib.basis as mpl_basis
 import scipy.stats as stats
 from mp_lib.utils import plot_mean_and_std
-from mp_lib.mp_base import BaseMP
-# from typing import Type
+from mp_lib.base_mp import BaseMP
 
 
 class ProMP(BaseMP):
@@ -13,19 +12,18 @@ class ProMP(BaseMP):
                  num_basis: int,
                  duration: float,
                  dt: float,
-                 basis_generator: mpl_basis.BasisGenerator = None,
+                 basis_generator: mpl_basis.NormalizedRBFBasisGenerator = None,
                  phase_generator: mpl_phase.PhaseGenerator = None,
                  ):
 
-        if phase_generator is None:
-            phase_generator = mpl_phase.LinearPhaseGenerator(duration=duration)
+        # if phase_generator is None:
+        #     phase_generator = mpl_phase.LinearPhaseGenerator(duration=duration)
+        #
+        # if basis_generator is None:
+        #     basis_generator = mpl_basis.NormalizedRBFBasisGenerator(phase_generator,
+        #                                                             num_basis=num_basis, duration=duration)
 
-        if basis_generator is None:
-            basis_generator = mpl_basis.NormalizedRBFBasisGenerator(phase_generator,
-                                                                    num_basis=num_basis, duration=duration)
-
-        super().__init__(phase_generator=phase_generator, basis_generator=basis_generator,
-                         num_dof=num_dof, duration=duration, dt=dt)
+        super().__init__(num_dof=num_dof, dt=dt, basis_generator=basis_generator, phase_generator=phase_generator)
 
         self.n_weights = basis_generator.num_basis * self.n_dof
         self._mu = np.zeros(self.n_weights)
@@ -37,18 +35,19 @@ class ProMP(BaseMP):
     def weights(self):
         # assumes correct size but possibly wrong shape
         weights = np.atleast_2d(self._weights)
-        if weights.shape[0] != self.n_weights + \
-                (int(self.basis_generator.zero_start) + int(self.basis_generator.zero_goal)) * \
-                self.basis_generator.n_zero_basis:
+        n_zero_padding = (int(self.basis_generator.zero_start) + int(
+            self.basis_generator.zero_goal)) * self.basis_generator.n_zero_basis
+        if weights.shape[0] != self.n_weights + n_zero_padding:
             weights = weights.T
         return weights
-
-    def set_mean(self, mu):
-        self._mu = mu
 
     @property
     def mu(self):
         return self._mu
+
+    @mu.setter
+    def mu(self, mu):
+        self._mu = mu
 
     def set_weights(self, weights, n_samples=1):
         if n_samples == 1:
@@ -57,8 +56,8 @@ class ProMP(BaseMP):
                 weights = np.concatenate((np.zeros((self.n_dof, self.basis_generator.n_zero_basis)), weights), axis=1)
                 weights = weights.flatten()
             if self.basis_generator.zero_goal:
-                weights = np.reshape(weights, newshape=(self.n_dof, self.basis_generator.num_basis +
-                            int(self.basis_generator.zero_start) * self.basis_generator.n_zero_basis), order='C')
+                weights = np.reshape(weights, newshape=(self.n_dof, self.basis_generator.num_basis + int(
+                    self.basis_generator.zero_start) * self.basis_generator.n_zero_basis), order='C')
                 weights = np.concatenate((weights, np.zeros((self.n_dof, self.basis_generator.n_zero_basis))), axis=1)
                 weights = weights.flatten()
         else:
@@ -69,43 +68,46 @@ class ProMP(BaseMP):
                                           weights), axis=2)
                 weights = np.reshape(weights, newshape=(n_samples, -1), order='C')
             if self.basis_generator.zero_goal:
-                weights = np.reshape(weights, newshape=(n_samples, self.n_dof, self.basis_generator.num_basis +
-                            int(self.basis_generator.zero_start) * self.basis_generator.n_zero_basis), order='C')
-                weights = np.concatenate((weights, np.zeros((n_samples, self.n_dof,
-                                                             self.basis_generator.n_zero_basis))), axis=2)
+                weights = np.reshape(weights, newshape=(n_samples, self.n_dof, self.basis_generator.num_basis + int(
+                    self.basis_generator.zero_start) * self.basis_generator.n_zero_basis),
+                                     order='C')
+                weights = np.concatenate(
+                    (weights, np.zeros((n_samples, self.n_dof, self.basis_generator.n_zero_basis))), axis=2)
                 weights = np.reshape(weights, newshape=(n_samples, -1), order='C')
 
         self._weights = weights
 
-    def reference_trajectory_weight_matrix(self, time):
+    def reference_trajectory(self, time: np.ndarray):
+        duration = time[-1]
         basis_single_dof, basis_der_single_dof = self.basis_generator.basis_and_der(time)
 
         weights = np.reshape(self.weights, (-1, self.n_dof), order='F')
         des_pos = basis_single_dof @ weights
-        des_vel = basis_der_single_dof @ weights  / self.duration
+        des_vel = basis_der_single_dof @ weights / duration
 
         return des_pos, des_vel
 
-    def reference_trajectory(self, time):
+    def reference_trajectory_original(self, time: np.ndarray):
+        num_time_steps = len(time)
+        duration = time[-1]
         basis_multi_dof, basis_der_multi_dof = self.basis_generator.basis_and_der_multi_dof(time=time,
                                                                                             num_dof=self.n_dof)
 
-        des_pos = np.reshape(basis_multi_dof @ self.weights, (self.num_time_steps, self.n_dof), order='F')
+        des_pos = np.reshape(basis_multi_dof @ self.weights, (num_time_steps, self.n_dof), order='F')
         des_vel = np.reshape(basis_der_multi_dof @ self.weights,
-                             (self.num_time_steps, self.n_dof), order='F') / self.duration
+                             (num_time_steps, self.n_dof), order='F') / duration
 
         return des_pos, des_vel
 
-    def get_trajectory_samples(self, time, n_samples=1):
+    def get_trajectory_samples(self, time: np.ndarray, n_samples=1):
+        num_time_steps = len(time)
         basis_multi_dof = self.basis_generator.basis_multi_dof(time=time, num_dof=self.n_dof)
         weights = np.random.multivariate_normal(self.mu, self.cov_mat, n_samples)
         self.set_weights(weights, n_samples)
         # weights = weights.transpose()
         trajectory_flat = basis_multi_dof @ self.weights
         # a = trajectory_flat
-        trajectory_flat = trajectory_flat.reshape((self.n_dof,
-                                                   self.num_time_steps,
-                                                   n_samples))
+        trajectory_flat = trajectory_flat.reshape((self.n_dof, num_time_steps, n_samples))
         trajectory_flat = np.transpose(trajectory_flat, (1, 0, 2))
         # trajectory_flat = trajectory_flat.reshape((a.shape[0] / self.numDoF, self.numDoF, n_samples))
 
@@ -113,15 +115,15 @@ class ProMP(BaseMP):
 
     def get_mean_and_covariance_trajectory(self, time):
         # this only works for zero_start == False and zero_goal == False
+        num_time_steps = len(time)
         self.set_weights(self.mu)
         basis_multi_dof = self.basis_generator.basis_multi_dof(time=time, num_dof=self.n_dof)
         trajectory_flat = basis_multi_dof @ self.weights
-        trajectory_mean = trajectory_flat.reshape((self.n_dof, self.num_time_steps))
+        trajectory_mean = trajectory_flat.reshape((self.n_dof, num_time_steps))
         trajectory_mean = np.transpose(trajectory_mean, (1, 0))
         covariance_trajectory = np.zeros((self.n_dof, self.n_dof, len(time)))
 
         for i in range(len(time)):
-
             basis_single_t = basis_multi_dof[slice(i, (self.n_dof - 1) * len(time) + i + 1, len(time)), :]
             covariance_time_step = basis_single_t.dot(self.cov_mat).dot(basis_single_t.transpose())
             covariance_trajectory[:, :, i] = covariance_time_step
@@ -136,7 +138,6 @@ class ProMP(BaseMP):
         std_trajectory = np.zeros((len(time), self.n_dof))
 
         for i in range(len(time)):
-
             basis_single_t = basis_multi_dof[slice(i, (self.n_dof - 1) * len(time) + i + 1, len(time)), :]
             covariance_time_step = basis_single_t.dot(self.cov_mat).dot(basis_single_t.transpose())
             std_trajectory[i, :] = np.sqrt(np.diag(covariance_time_step))
@@ -222,7 +223,6 @@ class ProMP_old:
         covariance_trajectory = np.zeros((self.num_dof, self.num_dof, len(time)))
 
         for i in range(len(time)):
-
             basis_single_t = basis_multi_dof[slice(i, (self.num_dof - 1) * len(time) + i + 1, len(time)), :]
             covariance_time_step = basis_single_t.dot(self.cov_mat).dot(basis_single_t.transpose())
             covariance_trajectory[:, :, i] = covariance_time_step
@@ -237,7 +237,6 @@ class ProMP_old:
         std_trajectory = np.zeros((len(time), self.num_dof))
 
         for i in range(len(time)):
-
             basis_single_t = basis_multi_dof[slice(i, (self.num_dof - 1) * len(time) + i + 1, len(time)), :]
             covariance_time_step = basis_single_t.dot(self.cov_mat).dot(basis_single_t.transpose())
             std_trajectory[i, :] = np.sqrt(np.diag(covariance_time_step))
@@ -288,18 +287,16 @@ class ProMP_old:
 
 class MAPWeightLearner:
 
-    def __init__(self, promp: ProMP, regularization_coeff=10**-9, prior_covariance=10**-4, prior_weight=1):
+    def __init__(self, promp: ProMP, regularization_coeff=10 ** -9, prior_covariance=10 ** -4, prior_weight=1):
         self.promp = promp
         self.prior_covariance = prior_covariance
         self.prior_weight = prior_weight
         self.regularization_coeff = regularization_coeff
 
     def learn_from_data(self, trajectory_list, time_list):
-
         num_traj = len(trajectory_list)
         weight_matrix = np.zeros((num_traj, self.promp.num_weights))
         for i in range(num_traj):
-
             trajectory = trajectory_list[i]
             time = time_list[i]
             trajectory_flat = trajectory.transpose().reshape(trajectory.shape[0] * trajectory.shape[1])
